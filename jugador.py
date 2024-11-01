@@ -4,7 +4,7 @@ import os
 DIR_BASE = os.path.dirname(os.path.abspath(__file__))
 
 class Jugador(pygame.sprite.Sprite):
-    def __init__(self, pos, limite, velocidad, controles=None):
+    def __init__(self, pos, limite, velocidad, controles):
         super().__init__()
         self.image = pygame.image.load(os.path.join(DIR_BASE, 'graficos', 'jugador.png')).convert_alpha()
         self.rect = self.image.get_rect(midbottom=pos)
@@ -14,7 +14,7 @@ class Jugador(pygame.sprite.Sprite):
         self.tiempo_laser = 0
         self.enfriamiento_laser = 600
 
-        # Controles personalizados para multijugador
+        # Controles personalizados para cada jugador
         self.controles = controles if controles else {
             'izquierda': pygame.K_LEFT,
             'derecha': pygame.K_RIGHT,

@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import random
 from random import choice, randint
 
 # Inicializar Pygame
@@ -18,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Clase Jugador
 class Jugador(pygame.sprite.Sprite):
-    def __init__(self, pos, limite, velocidad):
+    def __init__(self, pos, limite, velocidad, controles):
         super().__init__()
         self.image = pygame.image.load(os.path.join(BASE_DIR, 'graficos', 'jugador.png')).convert_alpha()
         self.rect = self.image.get_rect(midbottom=pos)
@@ -30,14 +31,15 @@ class Jugador(pygame.sprite.Sprite):
         self.lasers = pygame.sprite.Group()
         self.sonido_laser = pygame.mixer.Sound(os.path.join(BASE_DIR, 'sonidos', 'laser.wav'))
         self.sonido_laser.set_volume(0.5)
+        self.controles = controles
 
-    def obtener_entrada(self, teclas):
-        if teclas[pygame.K_RIGHT]:
+    def obtener_entrada(self):
+        teclas = pygame.key.get_pressed()
+        if teclas[self.controles['derecha']]:
             self.rect.x += self.velocidad
-        elif teclas[pygame.K_LEFT]:
+        elif teclas[self.controles['izquierda']]:
             self.rect.x -= self.velocidad
-
-        if teclas[pygame.K_SPACE] and self.listo:
+        if teclas[self.controles['disparo']] and self.listo:
             self.disparar_laser()
             self.listo = False
             self.tiempo_laser = pygame.time.get_ticks()
@@ -58,8 +60,8 @@ class Jugador(pygame.sprite.Sprite):
         self.lasers.add(Laser(self.rect.center, -8, self.rect.bottom))
         self.sonido_laser.play()
 
-    def update(self, teclas):
-        self.obtener_entrada(teclas)
+    def update(self):
+        self.obtener_entrada()
         self.limitar()
         self.recargar()
         self.lasers.update()
@@ -160,6 +162,32 @@ class Juego:
         self.sonido_explosion = pygame.mixer.Sound(os.path.join(BASE_DIR, 'sonidos', 'explosion.wav'))
         self.sonido_explosion.set_volume(0.3)
 
+    def configurar_jugadores(self):
+        if self.modo == "individual":
+            controles_jugador1 = {
+                'izquierda': pygame.K_a,
+                'derecha': pygame.K_d,
+                'disparo': pygame.K_w
+            }
+            sprite_jugador = Jugador((ancho_pantalla / 2, alto_pantalla - 100), ancho_pantalla, 5, controles_jugador1)
+            self.jugador1 = pygame.sprite.GroupSingle(sprite_jugador)
+            self.jugador2 = None
+        elif self.modo == "multijugador":
+            controles_jugador1 = {
+                'izquierda': pygame.K_a,
+                'derecha': pygame.K_d,
+                'disparo': pygame.K_w
+            }
+            controles_jugador2 = {
+                'izquierda': pygame.K_LEFT,
+                'derecha': pygame.K_RIGHT,
+                'disparo': pygame.K_SPACE
+            }
+            sprite_jugador1 = Jugador((ancho_pantalla / 3, alto_pantalla - 100), ancho_pantalla, 5, controles_jugador1)
+            sprite_jugador2 = Jugador((2 * ancho_pantalla / 3, alto_pantalla - 100), ancho_pantalla, 5,
+                                      controles_jugador2)
+            self.jugador1 = pygame.sprite.GroupSingle(sprite_jugador1)
+            self.jugador2 = pygame.sprite.GroupSingle(sprite_jugador2)
     def reiniciar_juego(self):
         self.jugador1 = None
         self.jugador2 = None
@@ -181,125 +209,172 @@ class Juego:
     def crear_obstaculos(self):
         for indice_obstaculo in range(4):
             x_obstaculo = indice_obstaculo * (ancho_pantalla / 4) + 50
-            self.crear_obstaculo(x_obstaculo, 480)
+            self.crear_obstaculo(x_obstaculo)
 
-    def crear_obstaculo(self, x_inicio, y_inicio):
-        for indice_fila, fila in enumerate(forma_obstaculo):
-            for indice_columna, columna in enumerate(fila):
-                if columna == 'x':
-                    x = x_inicio + indice_columna * 40
-                    y = y_inicio + indice_fila * 40
-                    bloque = Bloque(40, 'blue', x, y)
-                    self.bloques.add(bloque)
+            def crear_obstaculo(self, x_obstaculo):
+                for indice_fila, fila in enumerate(forma_obstaculo):
+                    for indice_columna, columna in enumerate(fila):
+                        if columna == 'x':
+                            x = x_obstaculo + (indice_columna * 30)
+                            y = alto_pantalla - (indice_fila * 30 + 50)
+                            self.bloques.add(Bloque(30, 'grey', x, y))
 
-    def configurar_aliens(self):
-        for fila in range(6):
-            for columna in range(8):
-                x = columna * 60 + 60
-                y = fila * 40 + 100
-                if fila == 0:
-                    alien = Alien('rojo', x, y)
-                elif fila == 1 or fila == 2:
-                    alien = Alien('verde', x, y)
-                else:
-                    alien = Alien('azul', x, y)
-                self.aliens.add(alien)
+            def configurar_aliens(self):
+                for fila in range(6):
+                    for columna in range(8):
+                        x = columna * 60 + 60
+                        y = fila * 40 + 100
+                        if fila == 0:
+                            alien = Alien('rojo', x, y)
+                        elif fila == 1 or fila == 2:
+                            alien = Alien('verde', x, y)
+                        else:
+                            alien = Alien('azul', x, y)
+                        self.aliens.add(alien)
 
-    def dibujar_menu(self):
-        titulo = self.fuente.render('SPACE INVADERS', True, (255, 255, 255))
-        instruccion = self.fuente.render('Presiona ESPACIO para comenzar', True, (255, 255, 255))
+            def dibujar_vidas(self):
+                vida_imagen = pygame.image.load(os.path.join(BASE_DIR, 'graficos', 'vida.png')).convert_alpha()
+                vida_rect = vida_imagen.get_rect()
 
-        pantalla.blit(titulo, (ancho_pantalla // 2 - titulo.get_width() // 2, alto_pantalla // 3))
-        pantalla.blit(instruccion, (ancho_pantalla // 2 - instruccion.get_width() // 2, alto_pantalla // 2))
+                # Vidas del jugador 1 (arriba a la derecha)
+                for i in range(self.vidas1):
+                    pantalla.blit(vida_imagen, (ancho_pantalla - 100 + i * 30, 10))
 
-    def dibujar_seleccion_modo(self):
-        titulo = self.fuente.render('SELECCIONA MODO', True, (255, 255, 255))
-        opcion1 = self.fuente.render('1 - Un Jugador', True, (255, 255, 255))
-        opcion2 = self.fuente.render('2 - Dos Jugadores', True, (255, 255, 255))
+                if self.modo == "multijugador":
+                    # Vidas del jugador 2 (debajo de las vidas del jugador 1)
+                    for i in range(self.vidas2):
+                        pantalla.blit(vida_imagen, (ancho_pantalla - 100 + i * 30, 50))
 
-        pantalla.blit(titulo, (ancho_pantalla // 2 - titulo.get_width() // 2, alto_pantalla // 3))
-        pantalla.blit(opcion1, (ancho_pantalla // 2 - opcion1.get_width() // 2, alto_pantalla // 2))
-        pantalla.blit(opcion2, (ancho_pantalla // 2 - opcion2.get_width() // 2, alto_pantalla // 2 + 50))
+            def dibujar_puntuaciones(self):
+                puntuacion1_texto = self.fuente.render(f'Puntuación 1: {self.puntuacion1}', True, 'white')
+                pantalla.blit(puntuacion1_texto, (10, 10))
 
-    def configurar_jugadores(self):
-        if self.modo == "individual":
-            sprite_jugador = Jugador((ancho_pantalla / 2, alto_pantalla), ancho_pantalla, 5)
-            self.jugador1 = pygame.sprite.GroupSingle(sprite_jugador)
-            self.jugador2 = None
-        elif self.modo == "multijugador":
-            sprite_jugador1 = Jugador((ancho_pantalla / 3, alto_pantalla), ancho_pantalla, 5)
-            sprite_jugador2 = Jugador((2 * ancho_pantalla / 3, alto_pantalla), ancho_pantalla, 5)
-            self.jugador1 = pygame.sprite.GroupSingle(sprite_jugador1)
-            self.jugador2 = pygame.sprite.GroupSingle(sprite_jugador2)
+                if self.modo == "multijugador":
+                    puntuacion2_texto = self.fuente.render(f'Puntuación 2: {self.puntuacion2}', True, 'white')
+                    pantalla.blit(puntuacion2_texto, (10, 30))
 
-    def mostrar_puntuaciones(self):
-        if self.modo == "individual":
-            texto_puntuacion = self.fuente.render(f'Puntuación: {self.puntuacion1}', True, (255, 255, 255))
-            pantalla.blit(texto_puntuacion, (10, 10))
-        else:
-            texto_p1 = self.fuente.render(f'P1: {self.puntuacion1}', True, (255, 255, 255))
-            texto_p2 = self.fuente.render(f'P2: {self.puntuacion2}', True, (255, 255, 255))
-            pantalla.blit(texto_p1, (10, 10))
-            pantalla.blit(texto_p2, (ancho_pantalla - 150, 10))
-
-    def mostrar_vidas(self):
-        if self.modo == "individual":
-            for i in range(self.vidas1):
-                x = self.pos_x_inicio_vida + (i * 40)
-                pantalla.blit(self.superficie_vida, (x, 10))
-        else:
-            for i in range(self.vidas1):
-                x = 10 + (i * 40)
-                pantalla.blit(self.superficie_vida, (x, 40))
-            for i in range(self.vidas2):
-                x = ancho_pantalla - 150 + (i * 40)
-                pantalla.blit(self.superficie_vida, (x, 40))
-
-    def run(self):
-        clock = pygame.time.Clock()
-        self.musica.play(loops=-1)
-
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-
-                if event.type == pygame.KEYDOWN:
-                    if self.estado == "menu" and event.key == pygame.K_SPACE:
-                        self.estado = "seleccion_modo"
-                    elif self.estado == "seleccion_modo" and event.key == pygame.K_1:
-                        self.estado = "jugando"
-                        self.modo = "individual"
-                        self.configurar_jugadores()
-                    elif self.estado == "seleccion_modo" and event.key == pygame.K_2:
-                        self.estado = "jugando"
-                        self.modo = "multijugador"
-                        self.configurar_jugadores()
-                    elif self.estado == "jugando" and event.key == pygame.K_p:
-                        self.estado = "menu"
-                        self.reiniciar_juego()
-
-            pantalla.fill((30, 30, 30))
-
-            if self.estado == "menu":
-                self.dibujar_menu()
-            elif self.estado == "seleccion_modo":
-                self.dibujar_seleccion_modo()
-            elif self.estado == "jugando":
-                self.mostrar_puntuaciones()
-                self.mostrar_vidas()
-                self.jugador1.draw(pantalla)
-                self.jugador2.draw(pantalla)
+            def dibujar_elementos(self):
                 self.bloques.draw(pantalla)
                 self.aliens.draw(pantalla)
                 self.lasers_alien.draw(pantalla)
                 self.extra.draw(pantalla)
+                self.jugador1.lasers.draw(pantalla)
+                if self.modo == "multijugador":
+                    self.jugador2.lasers.draw(pantalla)
 
-            pygame.display.flip()
-            clock.tick(60)
+            def revisar_colisiones(self):
+                # Colisiones de láser jugador con aliens
+                for jugador in [self.jugador1, self.jugador2]:
+                    if jugador:
+                        for laser in jugador.lasers:
+                            aliens_golpeados = pygame.sprite.spritecollide(laser, self.aliens, True)
+                            if aliens_golpeados:
+                                laser.kill()
+                                if jugador == self.jugador1:
+                                    self.puntuacion1 += 100 * len(aliens_golpeados)
+                                else:
+                                    self.puntuacion2 += 100 * len(aliens_golpeados)
+                                self.sonido_explosion.play()
 
+                # Colisiones de láser alien con jugadores
+                for laser in self.lasers_alien:
+                    if self.jugador1 and pygame.sprite.spritecollide(self.jugador1.sprite, [laser], True):
+                        self.vidas1 -= 1
+                        self.sonido_explosion.play()
+                    if self.jugador2 and pygame.sprite.spritecollide(self.jugador2.sprite, [laser], True):
+                        self.vidas2 -= 1
+                        self.sonido_explosion.play()
 
-if __name__ == "__main__":
-    juego = Juego()
-    juego.run()
+            def revisar_bordes_aliens(self):
+                for alien in self.aliens:
+                    if alien.rect.right >= ancho_pantalla or alien.rect.left <= 0:
+                        self.direccion_alien *= -1
+                        self.aliens.update(self.direccion_alien)
+
+            def disparar_laser_alien(self):
+                if self.aliens:
+                    alien = choice(list(self.aliens))
+                    self.lasers_alien.add(Laser(alien.rect.center, 4, alto_pantalla))
+
+            def jugar(self):
+                self.jugador1.update()
+                if self.modo == "multijugador":
+                    self.jugador2.update()
+
+                self.aliens.update(self.direccion_alien)
+                self.lasers_alien.update()
+                self.extra.update()
+                self.bloques.update()
+
+                self.dibujar_elementos()
+                self.revisar_colisiones()
+                self.revisar_bordes_aliens()
+                self.disparar_laser_alien()
+
+            def mostrar_pantalla_victoria(self):
+                victoria_texto = self.fuente.render('¡Victoria!', True, 'white')
+                pantalla.blit(victoria_texto, (ancho_pantalla / 2 - 50, alto_pantalla / 2 - 20))
+
+            def mostrar_pantalla_derrota(self):
+                derrota_texto = self.fuente.render('¡Derrota!', True, 'white')
+                pantalla.blit(derrota_texto, (ancho_pantalla / 2 - 50, alto_pantalla / 2 - 20))
+
+            def run(self):
+                if self.estado == "menu":
+                    self.menu()
+                elif self.estado == "juego":
+                    self.jugar()
+                elif self.estado == "victoria":
+                    self.mostrar_pantalla_victoria()
+                elif self.estado == "derrota":
+                    self.mostrar_pantalla_derrota()
+
+                pygame.display.update()
+                pygame.time.Clock().tick(60)
+
+            def menu(self):
+                self.musica.play(-1)
+                self.estado = "menu"
+                self.modo = None
+                self.jugador1 = None
+                self.jugador2 = None
+                self.vidas1 = 3
+                self.vidas2 = 3
+                self.puntuacion1 = 0
+                self.puntuacion2 = 0
+
+                while self.estado == "menu":
+                    for event in pygame.event.get():
+                        if event.type == pygame.QUIT:
+                            pygame.quit()
+                            sys.exit()
+                        if event.type == pygame.KEYDOWN:
+                            if event.key == pygame.K_1:
+                                self.estado = "juego"
+                                self.modo = "individual"
+                                self.jugador1 = Jugador((ancho_pantalla / 2, alto_pantalla - 100), ancho_pantalla, 5,
+                                                        {'derecha': pygame.K_d, 'izquierda': pygame.K_a,
+                                                         'disparo': pygame.K_w})
+                            elif event.key == pygame.K_2:
+                                self.estado = "juego"
+                                self.modo = "multijugador"
+                                self.jugador1 = Jugador((ancho_pantalla / 2 - 100, alto_pantalla - 100), ancho_pantalla,
+                                                        5, {'derecha': pygame.K_d, 'izquierda': pygame.K_a,
+                                                            'disparo': pygame.K_w})
+                                self.jugador2 = Jugador((ancho_pantalla / 2 + 100, alto_pantalla - 100), ancho_pantalla,
+                                                        5, {'derecha': pygame.K_RIGHT, 'izquierda': pygame.K_LEFT,
+                                                            'disparo': pygame.K_SPACE})
+
+                    pantalla.fill('black')
+                    menu_texto = self.fuente.render(
+                        'Presiona 1 para jugar en modo individual o 2 para jugar en modo multijugador', True, 'white')
+                    pantalla.blit(menu_texto, (ancho_pantalla / 2 - 200, alto_pantalla / 2 - 20))
+                    pygame.display.update()
+                    pygame.time.Clock().tick(60)
+
+                self.musica.stop()
+
+        if __name__ == "__main__":
+            juego = Juego()
+            while True:
+                juego.run()
