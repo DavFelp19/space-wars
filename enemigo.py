@@ -20,7 +20,7 @@ class Alien(pygame.sprite.Sprite):
 class Extra(pygame.sprite.Sprite):
     def __init__(self, lado, ancho_pantalla):
         super().__init__()
-        self.image = pygame.image.load('./graphics/extra.png').convert_alpha()
+        self.image = pygame.image.load('./graficos/extra.png').convert_alpha()
 
         if lado == 'derecha':
             x = ancho_pantalla + 50
